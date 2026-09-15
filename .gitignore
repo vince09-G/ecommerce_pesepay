@@ -18,3 +18,7 @@ env/
 
 # OS
 .DS_Store
+ca.pem
+storefront_backup_utf8.sql
+storefront_backup.sql
+.env.backup

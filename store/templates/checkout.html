@@ -1,117 +1,349 @@
+{% extends "base.html" %}
 
-{% load static %}
+
+{% block title %}
+Checkout
+{% endblock %}
+
 
 {% block content %}
 
 <div class="container mt-5">
-    <h2>Checkout</h2>
 
-    <div id="error-msg" class="text-danger mb-3"></div>
+    <div class="row justify-content-center">
 
-    <button id="place-order-btn" class="btn btn-success">
-        Place Order
-    </button>
+        <div class="col-md-6">
+
+            <div class="card shadow-sm">
+
+                <div class="card-body p-4">
+
+                    <h2 class="mb-4">
+                        Checkout
+                    </h2>
+
+
+                    <!-- ERROR -->
+
+                    <div
+                        id="error-msg"
+                        class="alert alert-danger d-none"
+                    >
+                    </div>
+
+
+                    <!-- SUCCESS -->
+
+                    <div
+                        id="success-msg"
+                        class="alert alert-success d-none"
+                    >
+                    </div>
+
+
+                    <p class="text-muted">
+
+                        Your order will be created and you
+                        will be redirected to Pesepay to
+                        complete your payment.
+
+                    </p>
+
+
+                    <button
+                        id="place-order-btn"
+                        class="btn btn-success w-100 mt-3"
+                    >
+
+                        Place Order & Pay
+
+                    </button>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
 
+
 <script>
-let createdOrderId = null;
 
-/* ---------------- SAFE JSON PARSER ---------------- */
-async function safeJson(response) {
-    const text = await response.text();
-    try {
-        return JSON.parse(text);
-    } catch (e) {
-        console.error("Invalid JSON:", text);
-        throw new Error("Server returned invalid response.");
-    }
-}
+/* =====================================================
+   GET ACCESS TOKEN
+   ===================================================== */
 
-/* ---------------- CREATE ORDER ---------------- */
-async function createOrder() {
-    const cartId = localStorage.getItem("cart_id");
+function getAccessToken() {
 
-    if (!cartId) {
-        throw new Error("Cart not found.");
-    }
-
-    const response = await fetch("/api/store/orders/create/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}"
-        },
-        credentials: "include",
-        body: JSON.stringify({ cart_id: cartId })
-    });
-
-    if (!response.ok) {
-        throw new Error("Order creation failed");
-    }
-
-    const data = await safeJson(response);
-
-    if (!data.id) {
-        throw new Error("Invalid order response");
-    }
-
-    createdOrderId = data.id;
-    return createdOrderId;
-}
-
-/* ---------------- PAY WITH ECOCASH ---------------- */
-async function payWithEcoCash(phone) {
-
-    const response = await fetch(
-        `/api/store/orders/${createdOrderId}/pay-ecocash/`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": "{{ csrf_token }}"
-            },
-            credentials: "include",
-            body: JSON.stringify({ msisdn: phone })
-        }
+    return localStorage.getItem(
+        "access_token"
     );
 
-    if (!response.ok) {
-        const errorData = await safeJson(response);
-        throw new Error(errorData.error || "Payment failed");
-    }
-
-    const data = await safeJson(response);
-
-    if (data.success) {
-        alert("Payment request sent to your phone 📱");
-        localStorage.removeItem("cart_id");
-        window.location.href = "/store/";
-    } else {
-        throw new Error(data.message || "Payment failed.");
-    }
 }
 
-/* ---------------- PLACE ORDER CLICK ---------------- */
-document.getElementById("place-order-btn").addEventListener("click", async () => {
 
-    const errorMsg = document.getElementById("error-msg");
-    errorMsg.innerText = "";
+/* =====================================================
+   CHECK LOGIN
+   ===================================================== */
+
+if (!getAccessToken()) {
+
+    window.location.href =
+        `/login/?next=${encodeURIComponent(
+            window.location.pathname
+        )}`;
+
+}
+
+
+/* =====================================================
+   CREATE ORDER
+   ===================================================== */
+
+async function createOrder() {
+
+    const cartId =
+        localStorage.getItem(
+            "cart_id"
+        );
+
+
+    if (!cartId) {
+
+        throw new Error(
+            "Your cart is empty."
+        );
+
+    }
+
+
+    const response =
+        await fetch(
+            "/api/store/orders/",
+            {
+                method: "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json",
+
+                    "Authorization":
+                        `JWT ${getAccessToken()}`
+
+                },
+
+                body: JSON.stringify({
+
+                    cart_id:
+                        cartId
+
+                })
+
+            }
+        );
+
+
+    const text =
+        await response.text();
+
+
+    let data;
+
 
     try {
-        await createOrder();
 
-        const phone = prompt("Enter your EcoCash number (e.g. 0777123456):");
+        data =
+            JSON.parse(text);
 
-        if (!phone) {
-            throw new Error("Phone number is required.");
-        }
-
-        await payWithEcoCash(phone);
-
-    } catch (error) {
-        errorMsg.innerText = error.message;
     }
-});
+
+    catch {
+
+        console.error(
+            "Server response:",
+            text
+        );
+
+
+        throw new Error(
+            "Server returned an invalid response."
+        );
+
+    }
+
+
+    console.log(
+        "Order response:",
+        data
+    );
+
+
+    if (
+        response.status === 401 ||
+        response.status === 403
+    ) {
+
+        localStorage.removeItem(
+            "access_token"
+        );
+
+
+        throw new Error(
+            "Your login session has expired. Please login again."
+        );
+
+    }
+
+
+    if (!response.ok) {
+
+        throw new Error(
+
+            data.detail ||
+            data.cart_id ||
+            "Unable to create order."
+
+        );
+
+    }
+
+
+    return data.id;
+
+}
+
+
+/* =====================================================
+   PLACE ORDER
+   ===================================================== */
+
+document
+    .getElementById(
+        "place-order-btn"
+    )
+    .addEventListener(
+        "click",
+        async function() {
+
+            const button =
+                document.getElementById(
+                    "place-order-btn"
+                );
+
+
+            const errorMsg =
+                document.getElementById(
+                    "error-msg"
+                );
+
+
+            /* -----------------------------------------
+               CLEAR ERROR
+               ----------------------------------------- */
+
+            errorMsg.classList.add(
+                "d-none"
+            );
+
+
+            /* -----------------------------------------
+               CHECK LOGIN
+               ----------------------------------------- */
+
+            if (!getAccessToken()) {
+
+                window.location.href =
+                    `/login/?next=${encodeURIComponent(
+                        window.location.pathname
+                    )}`;
+
+                return;
+
+            }
+
+
+            try {
+
+                /* -------------------------------------
+                   DISABLE BUTTON
+                   ------------------------------------- */
+
+                button.disabled = true;
+
+                button.textContent =
+                    "Creating order...";
+
+
+                /* -------------------------------------
+                   CREATE ORDER
+                   ------------------------------------- */
+
+                const orderId =
+                    await createOrder();
+
+
+                console.log(
+                    "Order created:",
+                    orderId
+                );
+
+
+                /* -------------------------------------
+                   REMOVE CART
+                   ------------------------------------- */
+
+                localStorage.removeItem(
+                    "cart_id"
+                );
+
+
+                /* -------------------------------------
+                   REDIRECT TO PESEPAY
+                   ------------------------------------- */
+
+                button.textContent =
+                    "Redirecting to Pesepay...";
+
+
+                window.location.href =
+                    `/store/payment/start/${orderId}/`;
+
+            }
+
+
+            catch (error) {
+
+                console.error(
+                    "Checkout error:",
+                    error
+                );
+
+
+                errorMsg.textContent =
+                    error.message;
+
+
+                errorMsg.classList.remove(
+                    "d-none"
+                );
+
+
+                button.disabled =
+                    false;
+
+
+                button.textContent =
+                    "Place Order & Pay";
+
+            }
+
+        }
+    );
 
 </script>
 

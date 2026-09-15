@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Create Account
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container mt-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-md-5">
+
+            <div class="card shadow-sm">
+
+                <div class="card-body p-4">
+
+                    <h2 class="text-center mb-4">
+                        Create Account
+                    </h2>
+
+
+                    <!-- ERROR -->
+
+                    <div
+                        id="register-error"
+                        class="alert alert-danger d-none"
+                    >
+                    </div>
+
+
+                    <!-- SUCCESS -->
+
+                    <div
+                        id="register-success"
+                        class="alert alert-success d-none"
+                    >
+                    </div>
+
+
+                    <!-- REGISTER FORM -->
+
+                    <form id="register-form">
+
+
+                        <!-- USERNAME -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="username"
+                                class="form-label"
+                            >
+                                Username
+                            </label>
+
+
+                            <input
+                                type="text"
+                                id="username"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- EMAIL -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="email"
+                                class="form-label"
+                            >
+                                Email
+                            </label>
+
+
+                            <input
+                                type="email"
+                                id="email"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- PASSWORD -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="password"
+                                class="form-label"
+                            >
+                                Password
+                            </label>
+
+
+                            <input
+                                type="password"
+                                id="password"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- CONFIRM PASSWORD -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="re_password"
+                                class="form-label"
+                            >
+                                Confirm Password
+                            </label>
+
+
+                            <input
+                                type="password"
+                                id="re_password"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- BUTTON -->
+
+                        <button
+                            type="submit"
+                            id="register-btn"
+                            class="btn btn-primary w-100"
+                        >
+                            Create Account
+                        </button>
+
+
+                    </form>
+
+
+                    <!-- LOGIN LINK -->
+
+                    <p class="text-center mt-3">
+
+                        Already have an account?
+
+                        <a
+                            href="{% url 'login' %}"
+                        >
+                            Login
+                        </a>
+
+                    </p>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   REGISTER FORM
+   ===================================================== */
+
+const registerForm =
+    document.getElementById(
+        "register-form"
+    );
+
+
+registerForm.addEventListener(
+    "submit",
+    async function(event) {
+
+        event.preventDefault();
+
+
+        /* ---------------------------------------------
+           GET FORM VALUES
+           --------------------------------------------- */
+
+        const username =
+            document
+                .getElementById("username")
+                .value
+                .trim();
+
+
+        const email =
+            document
+                .getElementById("email")
+                .value
+                .trim();
+
+
+        const password =
+            document
+                .getElementById("password")
+                .value;
+
+
+        const rePassword =
+            document
+                .getElementById("re_password")
+                .value;
+
+
+        /* ---------------------------------------------
+           GET ELEMENTS
+           --------------------------------------------- */
+
+        const errorBox =
+            document.getElementById(
+                "register-error"
+            );
+
+
+        const successBox =
+            document.getElementById(
+                "register-success"
+            );
+
+
+        const button =
+            document.getElementById(
+                "register-btn"
+            );
+
+
+        /* ---------------------------------------------
+           CLEAR MESSAGES
+           --------------------------------------------- */
+
+        errorBox.classList.add(
+            "d-none"
+        );
+
+
+        successBox.classList.add(
+            "d-none"
+        );
+
+
+        /* ---------------------------------------------
+           CHECK PASSWORDS
+           --------------------------------------------- */
+
+        if (
+            password !==
+            rePassword
+        ) {
+
+            errorBox.textContent =
+                "Passwords do not match.";
+
+
+            errorBox.classList.remove(
+                "d-none"
+            );
+
+
+            return;
+
+        }
+
+
+        /* ---------------------------------------------
+           DISABLE BUTTON
+           --------------------------------------------- */
+
+        button.disabled = true;
+
+        button.textContent =
+            "Creating account...";
+
+
+        try {
+
+            /* -----------------------------------------
+               SEND REGISTRATION REQUEST
+               ----------------------------------------- */
+
+            const response =
+                await fetch(
+                    "/auth/users/",
+                    {
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body: JSON.stringify({
+
+                            username:
+                                username,
+
+                            email:
+                                email,
+
+                            password:
+                                password,
+
+                            re_password:
+                                rePassword
+
+                        })
+
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            console.log(
+                "Registration response:",
+                data
+            );
+
+
+            /* -----------------------------------------
+               CHECK RESPONSE
+               ----------------------------------------- */
+
+            if (!response.ok) {
+
+                let message =
+                    "Registration failed.";
+
+
+                if (
+                    typeof data ===
+                    "object"
+                ) {
+
+                    message =
+                        Object.entries(data)
+                            .map(
+                                function(
+                                    [
+                                        field,
+                                        errors
+                                    ]
+                                ) {
+
+                                    if (
+                                        Array.isArray(
+                                            errors
+                                        )
+                                    ) {
+
+                                        return (
+                                            field +
+                                            ": " +
+                                            errors.join(
+                                                ", "
+                                            )
+                                        );
+
+                                    }
+
+
+                                    return (
+                                        field +
+                                        ": " +
+                                        errors
+                                    );
+
+                                }
+                            )
+                            .join("\n");
+
+                }
+
+
+                throw new Error(
+                    message
+                );
+
+            }
+
+
+            /* -----------------------------------------
+               SUCCESS
+               ----------------------------------------- */
+
+            successBox.textContent =
+                "Account created successfully! Redirecting to login...";
+
+
+            successBox.classList.remove(
+                "d-none"
+            );
+
+
+            /* -----------------------------------------
+               REDIRECT TO LOGIN
+               ----------------------------------------- */
+
+            setTimeout(
+                function() {
+
+                    window.location.href =
+                        "{% url 'login' %}";
+
+                },
+                1500
+            );
+
+        }
+
+
+        catch (error) {
+
+            console.error(
+                "Registration error:",
+                error
+            );
+
+
+            errorBox.textContent =
+                error.message;
+
+
+            errorBox.classList.remove(
+                "d-none"
+            );
+
+        }
+
+
+        finally {
+
+            button.disabled = false;
+
+            button.textContent =
+                "Create Account";
+
+        }
+
+    }
+);
+
+</script>
+
+{% endblock %}

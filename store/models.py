@@ -76,6 +76,33 @@ class Orderitem(models.Model):
     quantity= models.PositiveSmallIntegerField()
     unit_price=models.DecimalField(max_digits=6, decimal_places=2)
 
+class Payment(models.Model):
+    STATUS_PENDING = 'PENDING'
+    STATUS_PAID = 'PAID'
+    STATUS_FAILED = 'FAILED'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PAID, 'Paid'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING
+    )
+
+    poll_url = models.TextField(blank=True, null=True)
+
+    reference = models.CharField(max_length=255)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    
 class Cart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4)
     created_at=models.DateTimeField(auto_now_add=True)

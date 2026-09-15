@@ -17,11 +17,4 @@ products_router.register('images', views.ProductImageViewset, basename='product-
 carts_router=routers.NestedDefaultRouter(router, 'carts', lookup= 'cart')
 carts_router.register('cart-items', views.CartItemViewset, basename='cart-items')
 
-# urlpatterns = [
-#     path("store-page", views.products_page, name="products_page"),  # 👈 TEMPLATE VIEW
-# ]
-
-urlpatterns= router.urls + products_router.urls + carts_router.urls
-urlpatterns += [
-    path("orders/<int:pk>/pay-ecocash/", views.pay_order_ecocash, name="pay_order_ecocash"),
-]
+urlpatterns = router.urls + products_router.urls + carts_router.urls

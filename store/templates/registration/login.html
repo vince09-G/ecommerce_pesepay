@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Login
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container mt-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-md-5">
+
+            <div class="card shadow-sm">
+
+                <div class="card-body p-4">
+
+                    <h2 class="text-center mb-4">
+                        Login
+                    </h2>
+
+
+                    <!-- ERROR -->
+
+                    <div
+                        id="login-error"
+                        class="alert alert-danger d-none"
+                    >
+                    </div>
+
+
+                    <!-- SUCCESS -->
+
+                    <div
+                        id="login-success"
+                        class="alert alert-success d-none"
+                    >
+                    </div>
+
+
+                    <!-- LOGIN FORM -->
+
+                    <form id="login-form">
+
+
+                        <!-- USERNAME -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="username"
+                                class="form-label"
+                            >
+                                Username
+                            </label>
+
+
+                            <input
+                                type="text"
+                                id="username"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- PASSWORD -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="password"
+                                class="form-label"
+                            >
+                                Password
+                            </label>
+
+
+                            <input
+                                type="password"
+                                id="password"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- BUTTON -->
+
+                        <button
+                            type="submit"
+                            id="login-btn"
+                            class="btn btn-primary w-100"
+                        >
+                            Login
+                        </button>
+
+
+                    </form>
+
+
+                    <!-- REGISTER LINK -->
+
+                    <p class="text-center mt-3">
+
+                        Don't have an account?
+
+                        <a
+                            href="{% url 'register' %}"
+                        >
+                            Register
+                        </a>
+
+                    </p>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   LOGIN FORM
+   ===================================================== */
+
+const loginForm =
+    document.getElementById(
+        "login-form"
+    );
+
+
+loginForm.addEventListener(
+    "submit",
+    async function(event) {
+
+        event.preventDefault();
+
+
+        /* ---------------------------------------------
+           GET FORM VALUES
+           --------------------------------------------- */
+
+        const username =
+            document
+                .getElementById("username")
+                .value
+                .trim();
+
+
+        const password =
+            document
+                .getElementById("password")
+                .value;
+
+
+        /* ---------------------------------------------
+           GET ELEMENTS
+           --------------------------------------------- */
+
+        const errorBox =
+            document.getElementById(
+                "login-error"
+            );
+
+
+        const successBox =
+            document.getElementById(
+                "login-success"
+            );
+
+
+        const button =
+            document.getElementById(
+                "login-btn"
+            );
+
+
+        /* ---------------------------------------------
+           CLEAR MESSAGES
+           --------------------------------------------- */
+
+        errorBox.classList.add(
+            "d-none"
+        );
+
+
+        successBox.classList.add(
+            "d-none"
+        );
+
+
+        /* ---------------------------------------------
+           DISABLE BUTTON
+           --------------------------------------------- */
+
+        button.disabled = true;
+
+        button.textContent =
+            "Logging in...";
+
+
+        try {
+
+            /* -----------------------------------------
+               SEND LOGIN REQUEST
+               ----------------------------------------- */
+
+            const response =
+                await fetch(
+                    "/auth/jwt/create/",
+                    {
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body: JSON.stringify({
+
+                            username:
+                                username,
+
+                            password:
+                                password
+
+                        })
+
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            console.log(
+                "Login response:",
+                data
+            );
+
+
+            /* -----------------------------------------
+               CHECK RESPONSE
+               ----------------------------------------- */
+
+            if (!response.ok) {
+
+                throw new Error(
+
+                    data.detail ||
+                    "Invalid username or password."
+
+                );
+
+            }
+
+
+            /* -----------------------------------------
+               SAVE ACCESS TOKEN
+               ----------------------------------------- */
+
+            localStorage.setItem(
+                "access_token",
+                data.access
+            );
+
+
+            /* -----------------------------------------
+               SAVE REFRESH TOKEN
+               ----------------------------------------- */
+
+            if (data.refresh) {
+
+                localStorage.setItem(
+                    "refresh_token",
+                    data.refresh
+                );
+
+            }
+
+
+            /* -----------------------------------------
+               SUCCESS MESSAGE
+               ----------------------------------------- */
+
+            successBox.textContent =
+                "Login successful!";
+
+
+            successBox.classList.remove(
+                "d-none"
+            );
+
+
+            /* -----------------------------------------
+               FIND NEXT PAGE
+               ----------------------------------------- */
+
+            const params =
+                new URLSearchParams(
+                    window.location.search
+                );
+
+
+            const next =
+                params.get("next");
+
+
+            /* -----------------------------------------
+               REDIRECT
+               ----------------------------------------- */
+
+            setTimeout(
+                function() {
+
+                    if (next) {
+
+                        window.location.href =
+                            next;
+
+                    }
+
+                    else {
+
+                        window.location.href =
+                            "{% url 'products_page' %}";
+
+                    }
+
+                },
+                500
+            );
+
+        }
+
+
+        catch (error) {
+
+            console.error(
+                "Login error:",
+                error
+            );
+
+
+            errorBox.textContent =
+                error.message;
+
+
+            errorBox.classList.remove(
+                "d-none"
+            );
+
+        }
+
+
+        finally {
+
+            button.disabled = false;
+
+            button.textContent =
+                "Login";
+
+        }
+
+    }
+);
+
+</script>
+
+{% endblock %}

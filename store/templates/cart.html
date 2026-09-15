@@ -1,224 +1,577 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Your Cart</title>
+{% extends "base.html" %}
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <style>
-        body {
-            background: #f4f6f9;
-            color: #1f2937;
-        }
+{% block title %}
+Your Cart
+{% endblock %}
 
-        .cart-card {
-            background: white;
-            border-radius: 15px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-        }
 
-        .table {
-            color: #374151;
-        }
+{% block content %}
 
-        .table thead {
-            border-bottom: 2px solid #e5e7eb;
-        }
+<style>
 
-        .checkout-btn {
-            background: linear-gradient(45deg, #22c55e, #16a34a);
-            border: none;
-            font-weight: bold;
-            color: white;
-            transition: 0.3s ease;
-        }
+.cart-card {
 
-        .checkout-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 18px rgba(34,197,94,0.35);
-        }
+    background: white;
 
-        .remove-btn {
-            background: #ef4444;
-            border: none;
-            color: white;
-        }
+    border-radius: 15px;
 
-        .remove-btn:hover {
-            background: #dc2626;
-        }
+    border: 1px solid #e5e7eb;
 
-        .empty-box {
-            padding: 40px;
-            text-align: center;
-            color: #6b7280;
-        }
+    box-shadow:
+        0 8px 20px
+        rgba(0,0,0,0.08);
 
-        h2 {
-            color: #111827;
-        }
+}
 
-        .btn-outline-light {
-            border-color: #d1d5db;
-            color: #374151;
-        }
 
-        .btn-outline-light:hover {
-            background: #f3f4f6;
-        }
-    </style>
-</head>
+.checkout-btn {
 
-<body>
+    background: #198754;
+
+    border: none;
+
+    font-weight: bold;
+
+    color: white;
+
+}
+
+
+.checkout-btn:hover {
+
+    background: #157347;
+
+}
+
+
+.remove-btn {
+
+    background: #dc3545;
+
+    border: none;
+
+    color: white;
+
+}
+
+
+.remove-btn:hover {
+
+    background: #bb2d3b;
+
+}
+
+
+.empty-box {
+
+    padding: 40px;
+
+    text-align: center;
+
+    color: #6b7280;
+
+}
+
+</style>
+
 
 <div class="container mt-5">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold">🛒 Your Shopping Cart</h2>
-        <a href="/store/" class="btn btn-outline-light">⬅ Continue Shopping</a>
+
+    <!-- =================================================
+         HEADER
+         ================================================= -->
+
+    <div
+        class="d-flex justify-content-between align-items-center mb-4"
+    >
+
+        <h2 class="fw-bold">
+
+            🛒 Your Shopping Cart
+
+        </h2>
+
+
+        <a
+            href="{% url 'products_page' %}"
+            class="btn btn-outline-secondary"
+        >
+
+            ⬅ Continue Shopping
+
+        </a>
+
     </div>
+
+
+    <!-- =================================================
+         CART
+         ================================================= -->
 
     <div class="cart-card p-4">
 
+
         <table class="table">
+
+
             <thead>
+
                 <tr>
-                    <th>Product</th>
-                    <th width="120">Quantity</th>
-                    <th width="120">Price</th>
-                    <th width="120">Action</th>
+
+                    <th>
+                        Product
+                    </th>
+
+                    <th width="120">
+                        Quantity
+                    </th>
+
+                    <th width="120">
+                        Price
+                    </th>
+
+                    <th width="120">
+                        Action
+                    </th>
+
                 </tr>
+
             </thead>
+
+
             <tbody id="cart-items">
+
                 <tr>
-                    <td colspan="4" class="text-center">Loading...</td>
+
+                    <td
+                        colspan="4"
+                        class="text-center"
+                    >
+                        Loading...
+                    </td>
+
                 </tr>
+
             </tbody>
+
+
         </table>
 
-        <div id="empty-message"></div>
 
-        <div class="d-flex justify-content-between align-items-center mt-4">
-            <h4>Total: $<span id="total">0.00</span></h4>
+        <!-- EMPTY MESSAGE -->
 
-            <button id="checkout-btn"
-                    class="btn checkout-btn btn-lg"
-                    onclick="goToCheckout()"
-                    disabled>
-                Proceed to Checkout →
-            </button>
+        <div id="empty-message">
         </div>
 
+
+        <!-- TOTAL -->
+
+        <div
+            class="d-flex justify-content-between align-items-center mt-4"
+        >
+
+            <h4>
+
+                Total: $
+
+                <span id="total">
+                    0.00
+                </span>
+
+            </h4>
+
+
+            <button
+                id="checkout-btn"
+                class="btn checkout-btn btn-lg"
+                onclick="goToCheckout()"
+                disabled
+            >
+
+                Proceed to Checkout →
+
+            </button>
+
+        </div>
+
+
     </div>
+
 </div>
 
-<script>
-let cartId = localStorage.getItem("cart_id");
 
-/* ---------------- LOAD CART ---------------- */
+<script>
+
+/* =====================================================
+   VARIABLES
+   ===================================================== */
+
+let cartId =
+    localStorage.getItem(
+        "cart_id"
+    );
+
+
+/* =====================================================
+   TOKEN
+   ===================================================== */
+
+function getAccessToken() {
+
+    return localStorage.getItem(
+        "access_token"
+    );
+
+}
+
+
+/* =====================================================
+   AUTH HEADERS
+   ===================================================== */
+
+function authHeaders() {
+
+    return {
+
+        "Authorization":
+            `JWT ${getAccessToken()}`
+
+    };
+
+}
+
+
+/* =====================================================
+   LOAD CART
+   ===================================================== */
 
 async function loadCart() {
 
-    if (!cartId) {
-        showEmptyCart();
+    if (!getAccessToken()) {
+
+        window.location.href =
+            `/login/?next=${encodeURIComponent(
+                window.location.pathname
+            )}`;
+
         return;
+
     }
 
-    try {
-        const response = await fetch(`/api/store/carts/${cartId}/`);
-        const data = await response.json();
 
-        const tbody = document.getElementById("cart-items");
-        const totalEl = document.getElementById("total");
+    if (!cartId) {
 
-        tbody.innerHTML = "";
+        showEmptyCart();
 
-        if (!data.items.length) {
-            showEmptyCart();
-            return;
-        }
+        return;
 
-        let total = 0;
+    }
 
-        data.items.forEach(item => {
-            total += item.total_price;
+
+    const response =
+        await fetch(
+            `/api/store/carts/${cartId}/`,
+            {
+                headers:
+                    authHeaders()
+            }
+        );
+
+
+    if (!response.ok) {
+
+        localStorage.removeItem(
+            "cart_id"
+        );
+
+        cartId = null;
+
+        showEmptyCart();
+
+        return;
+
+    }
+
+
+    const data =
+        await response.json();
+
+
+    const tbody =
+        document.getElementById(
+            "cart-items"
+        );
+
+
+    tbody.innerHTML = "";
+
+
+    if (
+        !data.items ||
+        data.items.length === 0
+    ) {
+
+        showEmptyCart();
+
+        return;
+
+    }
+
+
+    let total = 0;
+
+
+    data.items.forEach(
+        function(item) {
+
+            total +=
+                Number(
+                    item.total_price
+                );
+
 
             tbody.innerHTML += `
+
                 <tr>
-                    <td>${item.product.title}</td>
+
                     <td>
-                        <input type="number"
-                               min="1"
-                               value="${item.quantity}"
-                               class="form-control"
-                               onchange="updateQuantity(${item.id}, this.value)">
+                        ${item.product.title}
                     </td>
-                    <td>$${item.total_price.toFixed(2)}</td>
+
+
                     <td>
-                        <button class="btn remove-btn btn-sm"
-                                onclick="removeItem(${item.id})">
+
+                        <input
+                            type="number"
+                            min="1"
+                            value="${item.quantity}"
+                            class="form-control"
+                            onchange="
+                                updateQuantity(
+                                    ${item.id},
+                                    this.value
+                                )
+                            "
+                        >
+
+                    </td>
+
+
+                    <td>
+
+                        $${Number(
+                            item.total_price
+                        ).toFixed(2)}
+
+                    </td>
+
+
+                    <td>
+
+                        <button
+                            class="btn remove-btn btn-sm"
+                            onclick="
+                                removeItem(
+                                    ${item.id}
+                                )
+                            "
+                        >
+
                             Remove
+
                         </button>
+
                     </td>
+
                 </tr>
+
             `;
-        });
 
-        totalEl.textContent = total.toFixed(2);
-        document.getElementById("checkout-btn").disabled = false;
+        }
+    );
 
-    } catch (error) {
-        showEmptyCart();
-    }
+
+    document.getElementById(
+        "total"
+    ).textContent =
+        total.toFixed(2);
+
+
+    document.getElementById(
+        "checkout-btn"
+    ).disabled = false;
+
 }
 
-/* ---------------- EMPTY CART ---------------- */
+
+/* =====================================================
+   EMPTY CART
+   ===================================================== */
 
 function showEmptyCart() {
-    document.getElementById("cart-items").innerHTML = "";
-    document.getElementById("empty-message").innerHTML = `
+
+    document.getElementById(
+        "cart-items"
+    ).innerHTML = "";
+
+
+    document.getElementById(
+        "empty-message"
+    ).innerHTML = `
+
         <div class="empty-box">
-            <h4>Your cart is empty</h4>
-            <p>Add some products to continue shopping.</p>
+
+            <h4>
+                Your cart is empty
+            </h4>
+
+            <p>
+                Add some products to continue shopping.
+            </p>
+
         </div>
+
     `;
-    document.getElementById("checkout-btn").disabled = true;
+
+
+    document.getElementById(
+        "total"
+    ).textContent =
+        "0.00";
+
+
+    document.getElementById(
+        "checkout-btn"
+    ).disabled = true;
+
 }
 
-/* ---------------- CART ACTIONS ---------------- */
 
-async function updateQuantity(itemId, qty) {
-    await fetch(`/api/store/carts/${cartId}/cart-items/${itemId}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: qty })
-    });
+/* =====================================================
+   UPDATE QUANTITY
+   ===================================================== */
+
+async function updateQuantity(
+    itemId,
+    quantity
+) {
+
+    if (
+        !quantity ||
+        Number(quantity) < 1
+    ) {
+
+        alert(
+            "Quantity must be at least 1."
+        );
+
+        loadCart();
+
+        return;
+
+    }
+
+
+    const response =
+        await fetch(
+            `/api/store/carts/${cartId}/cart-items/${itemId}/`,
+            {
+                method: "PATCH",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json",
+
+                    "Authorization":
+                        `JWT ${getAccessToken()}`
+
+                },
+
+                body: JSON.stringify({
+
+                    quantity:
+                        Number(quantity)
+
+                })
+
+            }
+        );
+
+
+    if (!response.ok) {
+
+        alert(
+            "Unable to update quantity."
+        );
+
+        return;
+
+    }
+
 
     loadCart();
+
 }
 
-async function removeItem(itemId) {
-    await fetch(`/api/store/carts/${cartId}/cart-items/${itemId}/`, {
-        method: "DELETE"
-    });
+
+/* =====================================================
+   REMOVE ITEM
+   ===================================================== */
+
+async function removeItem(
+    itemId
+) {
+
+    const response =
+        await fetch(
+            `/api/store/carts/${cartId}/cart-items/${itemId}/`,
+            {
+                method: "DELETE",
+
+                headers:
+                    authHeaders()
+
+            }
+        );
+
+
+    if (!response.ok) {
+
+        alert(
+            "Unable to remove item."
+        );
+
+        return;
+
+    }
+
 
     loadCart();
+
 }
 
-/* ---------------- CHECKOUT ---------------- */
+
+/* =====================================================
+   CHECKOUT
+   ===================================================== */
 
 function goToCheckout() {
-    if (!cartId) return;
-    window.location.href = "/store/checkout/";
+
+    window.location.href =
+        "{% url 'checkout' %}";
+
 }
 
-/* ---------------- INIT ---------------- */
+
+/* =====================================================
+   START
+   ===================================================== */
 
 loadCart();
 
 </script>
 
-</body>
-</html>
+{% endblock %}

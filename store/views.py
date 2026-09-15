@@ -1,4 +1,6 @@
-from django.shortcuts import render
+from urllib import response
+
+from django.shortcuts import render, redirect
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
 from rest_framework.pagination import PageNumberPagination
@@ -8,11 +10,12 @@ from rest_framework.response import Response
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.mixins import CreateModelMixin,RetrieveModelMixin,DestroyModelMixin, UpdateModelMixin
-from .models import Product,ProductImage, Collection, Review, Cart,CartItem, Customer, Order, Orderitem
+from .models import Product,ProductImage, Collection, Review, Cart,CartItem, Customer, Order, Orderitem, Payment
 from .serializer import ProductSerializer,CollectionSerializer, ReviewSerializer, CartSerializer,CartItemSerializer,AddCartItemSerializer,CartItemQuantitySerializer,CustomerSerializer,OrderSerializer,CreateOrderSerializer, OrderItemSerializer,UpdateOrderSerializer, ProductImageSerializer
 from .filters import ProductFilter
 from .permissions import IsAdminOrReadOnly
-from django.contrib.auth.decorators import login_required
+from django.conf import settings
+from django.http import HttpResponse
 # Create your views here.
 class ProductViewset(ModelViewSet):
     queryset= Product.objects.prefetch_related('images').all()
@@ -147,76 +150,407 @@ def cart_page(request):
 def product_detail_page(request, id): 
     return render(request, "product_detail.html", {"product_id": id})
 
-#@login_required
+
+def login_page(request):
+    return render(request, "registration/login.html")
+
+
+def register_page(request):
+    return render(request, "registration/register.html")
+
+from django.contrib.auth.decorators import login_required
+
+
 def checkout_page(request):
     return render(request, "checkout.html")
 
 
-#from .services import initiate_ecocash_payment
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from decimal import Decimal
-from .models import Order
-from .services import initiate_ecocash_payment  # your payment function
+import json
+import base64
+import requests
 
-@api_view(['POST'])
-def pay_order_ecocash(request, pk):
-    print("----- DEBUG START -----")
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+
+from django.shortcuts import redirect
+from django.http import HttpResponse
+from django.conf import settings
+
+from .models import Order, Payment
+
+
+# ---------------- ENCRYPT ---------------- #
+
+def encrypt_payload(data, encryption_key):
+
+    json_data = json.dumps(data)
+
+    key = encryption_key.encode("utf-8")
+
+    iv = encryption_key[:16].encode("utf-8")
+
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    encrypted_data = cipher.encrypt(
+        pad(json_data.encode("utf-8"), AES.block_size)
+    )
+
+    return base64.b64encode(encrypted_data).decode("utf-8")
+
+
+# ---------------- DECRYPT ---------------- #
+
+def decrypt_payload(encrypted_payload, encryption_key):
+
+    key = encryption_key.encode("utf-8")
+
+    iv = encryption_key[:16].encode("utf-8")
+
+    encrypted_bytes = base64.b64decode(encrypted_payload)
+
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    decrypted_data = unpad(
+        cipher.decrypt(encrypted_bytes),
+        AES.block_size
+    )
+
+    return json.loads(decrypted_data.decode("utf-8"))
+
+
+# ---------------- PAYMENT ---------------- #
+
+def start_payment(request, order_id):
 
     try:
-        order = Order.objects.get(pk=pk)
-    except Order.DoesNotExist:
-        return Response({"error": "Order not found"}, status=404)
 
-    msisdn = request.data.get("msisdn")
-    print("Received MSISDN:", msisdn)
-    print("Order ID:", order.id)
-    print("Order Items:", order.items.all())
+        order = Order.objects.get(id=order_id)
 
-    if not msisdn:
-        return Response({"error": "Phone number required"}, status=status.HTTP_400_BAD_REQUEST)
+        total = 0
 
-    # Calculate total
-    total = Decimal("0.00")
-    for item in order.items.all():
-        total += item.quantity * item.unit_price
-    print("Calculated TOTAL:", total)
-    print("----- DEBUG END -----")
+        for item in order.items.all():
+            total += item.quantity * item.unit_price
 
-    if total <= 0:
-        return Response({"error": "Order total must be greater than zero"}, status=status.HTTP_400_BAD_REQUEST)
+        # NORMAL JSON BODY (BEFORE ENCRYPTION)
 
-    # Call EcoCash API safely
-    try:
-        response = initiate_ecocash_payment(
-            msisdn=msisdn,
-            amount=float(total),
-            order_id=order.id
+        payment_body = {
+            "amountDetails": {
+                "amount": float(total),
+                "currencyCode": "USD"
+            },
+            "merchantReference": str(order.id),
+            "reasonForPayment": f"Order {order.id}",
+            "resultUrl": settings.PESEPAY_RESULT_URL,
+            "returnUrl": f"{settings.PESEPAY_RETURN_URL}?order_id={order.id}"
+        }
+
+        # ENCRYPT
+
+        encrypted_payload = encrypt_payload(
+            payment_body,
+            settings.PESEPAY_ENCRYPTION_KEY
         )
-        print("EcoCash RAW RESPONSE:", response)
-        print("Response content:", response.text)
+
+        # FINAL API PAYLOAD
+
+        payload = {
+            "payload": encrypted_payload
+        }
+
+        # SANDBOX URL
+
+        url = (
+            "https://api.test.sandbox.pesepay.com/"
+            "payments-engine/v1/payments/initiate"
+        )
+
+        headers = {
+            "authorization": settings.PESEPAY_INTEGRATION_KEY,
+            "Content-Type": "application/json"
+        }
+
+        response = requests.post(
+            url,
+            json=payload,
+            headers=headers
+        )
+
+        print("STATUS CODE:", response.status_code)
+        print("RAW RESPONSE:", response.text)
+
+        response_data = response.json()
+
+        encrypted_response = response_data.get("payload")
+
+        if not encrypted_response:
+
+            return HttpResponse(
+                f"Payment Failed: {response.text}"
+            )
+
+        # DECRYPT RESPONSE
+
+        decrypted_response = decrypt_payload(
+            encrypted_response,
+            settings.PESEPAY_ENCRYPTION_KEY
+        )
+
+        print("DECRYPTED RESPONSE:", decrypted_response)
+
+        redirect_url = decrypted_response.get("redirectUrl")
+
+        if redirect_url:
+
+            Payment.objects.create(
+                order=order,
+                amount=total,
+                status="PENDING",
+                reference=decrypted_response.get(
+                    "referenceNumber"
+                ),
+                poll_url=decrypted_response.get(
+                    "pollUrl"
+                )
+            )
+
+            return redirect(redirect_url)
+
+        return HttpResponse(
+            f"Payment Failed: {decrypted_response}"
+        )
+
     except Exception as e:
-        print("EcoCash Exception:", str(e))
-        return Response({"error": "Payment gateway error", "details": str(e)}, status=500)
 
-    # Try to parse JSON only if content exists
-    data = {}
-    if response.text.strip():
-        try:
-            data = response.json()
-            print("EcoCash JSON:", data)
-        except Exception as e:
-            print("JSON Parse Error:", str(e))
-            # fallback if response not JSON
-            data = {"success": True, "message": "Payment request sent (sandbox)"}  
-    else:
-        # empty response, assume sandbox success
-        data = {"success": True, "message": "Payment request sent (sandbox)"}
+        print("ERROR:", str(e))
 
-    # Update order if API call succeeded
-    if response.status_code == 200:
-        order.payment_status = "Processing"
-        order.save()
+        return HttpResponse(
+            f"An error occurred: {str(e)}"
+        )
+    
+from django.views.decorators.csrf import csrf_exempt
 
-    return Response(data, status=response.status_code)
+
+def check_payment_status(reference):
+
+    url = (
+        "https://api.test.sandbox.pesepay.com/"
+        "payments-engine/v1/payments/check-payment"
+    )
+
+    headers = {
+        "authorization": settings.PESEPAY_INTEGRATION_KEY,
+        "Content-Type": "application/json"
+    }
+
+    params = {
+        "referenceNumber": reference
+    }
+
+    response = requests.get(
+        url,
+        headers=headers,
+        params=params
+    )
+
+    print("STATUS CHECK:", response.text)
+
+    data = response.json()
+
+    encrypted_payload = data.get("payload")
+
+    if not encrypted_payload:
+        return None
+
+    decrypted_response = decrypt_payload(
+        encrypted_payload,
+        settings.PESEPAY_ENCRYPTION_KEY
+    )
+
+    print("DECRYPTED STATUS:", decrypted_response)
+
+    return decrypted_response
+
+from django.http import HttpResponse
+
+def payment_return(request):
+    try:
+        order_id = request.GET.get("order_id")
+
+        if not order_id:
+            return HttpResponse("Order ID was not provided.")
+
+        order = Order.objects.get(id=order_id)
+
+        payment = Payment.objects.get(order=order)
+
+        transaction = check_payment_status(payment.reference)
+
+        print("TRANSACTION:", transaction)
+
+        if not transaction:
+            return HttpResponse(
+                "Unable to retrieve transaction status."
+            )
+
+        status = transaction.get("transactionStatus")
+
+        print("PAYMENT STATUS:", status)
+
+        if status in ["SUCCESS", "PAID", "COMPLETED"]:
+
+            payment.status = Payment.STATUS_PAID
+            payment.save()
+
+            order.payment_status = Order.PAYMENT_STATUS_COMPLETE
+            order.save()
+
+            return render(
+                request,
+                "payment_result.html",
+                {
+                    "success": True,
+                    "order": order,
+                    "payment": payment,
+                }
+            )
+
+        elif status in ["INITIATED", "PENDING"]:
+
+            return render(
+                request,
+                "payment_result.html",
+                {
+                    "success": False,
+                    "pending": True,
+                    "order": order,
+                    "payment": payment,
+                }
+            )
+
+        else:
+
+            payment.status = Payment.STATUS_FAILED
+            payment.save()
+
+            order.payment_status = Order.PAYMENT_STATUS_FAILED
+            order.save()
+
+            return render(
+                request,
+                "payment_result.html",
+                {
+                    "success": False,
+                    "failed": True,
+                    "order": order,
+                    "payment": payment,
+                    "status": status,
+                }
+            )
+
+    except Order.DoesNotExist:
+        return HttpResponse("Order not found.")
+
+    except Payment.DoesNotExist:
+        return HttpResponse("Payment record not found.")
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        return HttpResponse(f"Error: {str(e)}")
+    
+@csrf_exempt
+def payment_result(request):
+
+    reference = request.GET.get("referenceNumber")
+
+    if not reference:
+        return HttpResponse("OK")
+
+    transaction = check_payment_status(reference)
+
+    if not transaction:
+        return HttpResponse("OK")
+
+    transaction_status = transaction.get("transactionStatus")
+
+    try:
+
+        payment = Payment.objects.get(
+            reference=reference
+        )
+
+        order = payment.order
+
+        if transaction_status in [
+            "SUCCESS",
+            "PAID",
+            "COMPLETED"
+        ]:
+
+            payment.status = Payment.STATUS_PAID
+            payment.save()
+
+            order.payment_status = Order.PAYMENT_STATUS_COMPLETE
+            order.save()
+
+        elif transaction_status in [
+            "INITIATED",
+            "PENDING"
+        ]:
+
+            payment.status = Payment.STATUS_PENDING
+            payment.save()
+
+        else:
+
+            payment.status = Payment.STATUS_FAILED
+            payment.save()
+
+            order.payment_status = Order.PAYMENT_STATUS_FAILED
+            order.save()
+
+    except Payment.DoesNotExist:
+        pass
+
+    return HttpResponse("OK")
+# class ProductList(ListCreateAPIView):
+#     queryset= Product.objects.all()
+#     serializer_class= ProductSerializer
+
+# class ProductDetails(RetrieveUpdateDestroyAPIView):
+#     queryset= Product.objects.all()
+#     serializer_class= ProductSerializer
+  
+
+# class CollectionList(ListCreateAPIView):
+#     queryset= Collection.objects.all()
+#     serializer_class= CollectionSerializer
+
+# class CollectionDetails(RetrieveUpdateDestroyAPIView):
+#     queryset= Collection.objects.all()
+#     serializer_class= CollectionSerializer
+
+# @api_view(['GET', 'POST'])
+# def product_list(request):
+#     if request.method == 'GET':
+#         products=Product.objects.select_related('collection').all()
+#         serializer= ProductSerializer(products, many=True)
+#         return Response(serializer.data)
+#     elif request.method == 'POST':
+#         serializer= ProductSerializer(data= request.data)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+
+#         return Response(serializer.data)
+
+# @api_view(['GET', 'PUT'])
+# def product_detail(request, id):
+#     product= get_object_or_404(Product, pk=id)
+#     if request.method == 'GET':
+#         serializer= ProductSerializer(product)
+#         return Response(serializer.data)
+    
+#     elif request.method == 'PUT':
+#         serializer= ProductSerializer(product, data= request.data)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         return Response(serializer.data)
