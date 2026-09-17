@@ -24,6 +24,7 @@ urlpatterns = [
     path('playground/', include('playground.urls')),
 
     # ✅ Frontend (HTML)
+    path('', include('store.frontend_urls')),
     path('store/', include('store.frontend_urls')),
 
     # ✅ API (DRF)
