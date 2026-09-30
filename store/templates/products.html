@@ -1,123 +1,140 @@
 {% extends "base.html" %}
 
-
 {% block title %}
 Products
 {% endblock %}
 
-
 {% block content %}
+
+<style>
+
+    /* =================================================
+       PRODUCT IMAGES
+       ================================================= */
+
+    .product-image {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+
+    .product-image-placeholder {
+        width: 100%;
+        height: 250px;
+        background-color: #f8f9fa;
+    }
+
+</style>
 
 <div class="container mt-4">
 
+```
+<!-- =================================================
+     HEADER
+     ================================================= -->
 
-    <!-- =================================================
-         HEADER
-         ================================================= -->
+<div
+    class="d-flex justify-content-between align-items-center mb-4"
+>
 
-    <div
-        class="d-flex justify-content-between align-items-center mb-4"
+    <h2>
+        Products
+    </h2>
+
+
+    <a
+        href="{% url 'cart_page' %}"
+        class="btn btn-outline-primary"
     >
-
-        <h2>
-            Products
-        </h2>
-
-
-        <a
-            href="{% url 'cart_page' %}"
-            class="btn btn-outline-primary"
-        >
-            🛒 View Cart
-        </a>
-
-    </div>
-
-
-    <!-- =================================================
-         SEARCH AND SORT
-         ================================================= -->
-
-    <div class="row mb-3">
-
-        <div class="col-md-6">
-
-            <input
-                type="text"
-                id="search"
-                class="form-control"
-                placeholder="Search products"
-            >
-
-        </div>
-
-
-        <div class="col-md-3">
-
-            <select
-                id="order"
-                class="form-select"
-            >
-
-                <option value="">
-                    Sort
-                </option>
-
-                <option value="price">
-                    Price ↑
-                </option>
-
-                <option value="-price">
-                    Price ↓
-                </option>
-
-            </select>
-
-        </div>
-
-    </div>
-
-
-    <!-- =================================================
-         PRODUCTS
-         ================================================= -->
-
-    <div
-        class="row"
-        id="products"
-    >
-
-    </div>
-
-
-    <!-- =================================================
-         PAGINATION
-         ================================================= -->
-
-    <div
-        class="d-flex justify-content-between mt-4"
-    >
-
-        <button
-            class="btn btn-secondary"
-            id="prevBtn"
-        >
-            Previous
-        </button>
-
-
-        <button
-            class="btn btn-secondary"
-            id="nextBtn"
-        >
-            Next
-        </button>
-
-    </div>
-
+        🛒 View Cart
+    </a>
 
 </div>
 
+
+<!-- =================================================
+     SEARCH AND SORT
+     ================================================= -->
+
+<div class="row mb-3">
+
+    <div class="col-md-6">
+
+        <input
+            type="text"
+            id="search"
+            class="form-control"
+            placeholder="Search products"
+        >
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <select
+            id="order"
+            class="form-select"
+        >
+
+            <option value="">
+                Sort
+            </option>
+
+            <option value="price">
+                Price ↑
+            </option>
+
+            <option value="-price">
+                Price ↓
+            </option>
+
+        </select>
+
+    </div>
+
+</div>
+
+
+<!-- =================================================
+     PRODUCTS
+     ================================================= -->
+
+<div
+    class="row"
+    id="products"
+>
+
+</div>
+
+
+<!-- =================================================
+     PAGINATION
+     ================================================= -->
+
+<div
+    class="d-flex justify-content-between mt-4"
+>
+
+    <button
+        class="btn btn-secondary"
+        id="prevBtn"
+    >
+        Previous
+    </button>
+
+
+    <button
+        class="btn btn-secondary"
+        id="nextBtn"
+    >
+        Next
+    </button>
+
+</div>
+```
+
+</div>
 
 <script>
 
@@ -417,11 +434,85 @@ async function loadProducts(
     data.results.forEach(
         function(product) {
 
+
+            /* -----------------------------------------
+               GET FIRST PRODUCT IMAGE
+               ----------------------------------------- */
+
+            let imageUrl = null;
+
+
+            if (
+                product.images &&
+                product.images.length > 0
+            ) {
+
+                imageUrl =
+                    product.images[0].image;
+
+            }
+
+
+            /* -----------------------------------------
+               IMAGE HTML
+               ----------------------------------------- */
+
+            let imageHTML;
+
+
+            if (imageUrl) {
+
+                imageHTML = `
+
+                    <img
+                        src="${imageUrl}"
+                        class="card-img-top product-image"
+                        alt="${product.title}"
+                    >
+
+                `;
+
+            }
+
+            else {
+
+                imageHTML = `
+
+                    <div
+                        class="product-image-placeholder
+                               d-flex
+                               align-items-center
+                               justify-content-center"
+                    >
+
+                        <span class="text-muted">
+
+                            No image available
+
+                        </span>
+
+                    </div>
+
+                `;
+
+            }
+
+
+            /* -----------------------------------------
+               PRODUCT CARD
+               ----------------------------------------- */
+
             container.innerHTML += `
 
                 <div class="col-md-4 mb-4">
 
                     <div class="card h-100 shadow-sm">
+
+
+                        <!-- PRODUCT IMAGE -->
+
+                        ${imageHTML}
+
 
                         <div class="card-body">
 
