@@ -22,7 +22,7 @@ class Product(models.Model):
     inventory= models.IntegerField()
     last_update= models.DateTimeField(auto_now=True)
     collection= models.ForeignKey(Collection, on_delete=models.PROTECT, related_name='products' )
-    promotions= models.ManyToManyField(Promotion)
+    promotions= models.ManyToManyField(Promotion, null=True, blank=True)
 
 class ProductImage(models.Model):
     product= models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
