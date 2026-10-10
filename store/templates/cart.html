@@ -1,5 +1,5 @@
+```html
 {% extends "base.html" %}
-
 
 {% block title %}
 Your Cart
@@ -11,96 +11,123 @@ Your Cart
 <style>
 
 .cart-card {
-
     background: white;
-
     border-radius: 15px;
-
     border: 1px solid #e5e7eb;
-
-    box-shadow:
-        0 8px 20px
-        rgba(0,0,0,0.08);
-
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
-
 
 .checkout-btn {
-
     background: #198754;
-
     border: none;
-
     font-weight: bold;
-
     color: white;
-
 }
-
 
 .checkout-btn:hover {
-
     background: #157347;
-
+    color: white;
 }
-
 
 .remove-btn {
-
     background: #dc3545;
-
     border: none;
-
     color: white;
-
 }
-
 
 .remove-btn:hover {
-
     background: #bb2d3b;
-
+    color: white;
 }
 
-
 .empty-box {
-
     padding: 40px;
-
     text-align: center;
-
     color: #6b7280;
+}
+
+/* PRODUCT IMAGE */
+
+.cart-product-image {
+    width: 85px;
+    height: 85px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
+    padding: 5px;
+    flex-shrink: 0;
+}
+
+.product-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-width: 180px;
+}
+
+.product-title {
+    font-weight: 600;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.quantity-input {
+    min-width: 75px;
+}
+
+.cart-table th,
+.cart-table td {
+    vertical-align: middle;
+}
+
+@media (max-width: 576px) {
+
+    .cart-card {
+        padding: 12px !important;
+    }
+
+    .cart-product-image {
+        width: 60px;
+        height: 60px;
+    }
+
+    .product-details {
+        gap: 8px;
+        min-width: 150px;
+    }
+
+    .cart-table {
+        font-size: 13px;
+    }
+
+    .checkout-btn {
+        font-size: 14px;
+    }
 
 }
 
 </style>
 
 
-<div class="container mt-5">
+<div class="container mt-5 mb-5">
 
 
     <!-- =================================================
          HEADER
          ================================================= -->
 
-    <div
-        class="d-flex justify-content-between align-items-center mb-4"
-    >
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
 
         <h2 class="fw-bold">
-
             🛒 Your Shopping Cart
-
         </h2>
-
 
         <a
             href="{% url 'products_page' %}"
             class="btn btn-outline-secondary"
         >
-
             ⬅ Continue Shopping
-
         </a>
 
     </div>
@@ -112,76 +139,48 @@ Your Cart
 
     <div class="cart-card p-4">
 
+        <div class="table-responsive">
 
-        <table class="table">
+            <table class="table cart-table">
 
+                <thead>
 
-            <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th style="width: 120px;">Quantity</th>
+                        <th style="width: 120px;">Price</th>
+                        <th style="width: 120px;">Action</th>
+                    </tr>
 
-                <tr>
+                </thead>
 
-                    <th>
-                        Product
-                    </th>
+                <tbody id="cart-items">
 
-                    <th width="120">
-                        Quantity
-                    </th>
+                    <tr>
+                        <td colspan="4" class="text-center py-4">
+                            Loading...
+                        </td>
+                    </tr>
 
-                    <th width="120">
-                        Price
-                    </th>
+                </tbody>
 
-                    <th width="120">
-                        Action
-                    </th>
+            </table>
 
-                </tr>
-
-            </thead>
-
-
-            <tbody id="cart-items">
-
-                <tr>
-
-                    <td
-                        colspan="4"
-                        class="text-center"
-                    >
-                        Loading...
-                    </td>
-
-                </tr>
-
-            </tbody>
-
-
-        </table>
+        </div>
 
 
         <!-- EMPTY MESSAGE -->
 
-        <div id="empty-message">
-        </div>
+        <div id="empty-message"></div>
 
 
         <!-- TOTAL -->
 
-        <div
-            class="d-flex justify-content-between align-items-center mt-4"
-        >
+        <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
 
-            <h4>
-
-                Total: $
-
-                <span id="total">
-                    0.00
-                </span>
-
+            <h4 class="mb-0">
+                Total: $<span id="total">0.00</span>
             </h4>
-
 
             <button
                 id="checkout-btn"
@@ -189,13 +188,10 @@ Your Cart
                 onclick="goToCheckout()"
                 disabled
             >
-
                 Proceed to Checkout →
-
             </button>
 
         </div>
-
 
     </div>
 
@@ -208,10 +204,7 @@ Your Cart
    VARIABLES
    ===================================================== */
 
-let cartId =
-    localStorage.getItem(
-        "cart_id"
-    );
+let cartId = localStorage.getItem("cart_id");
 
 
 /* =====================================================
@@ -220,9 +213,7 @@ let cartId =
 
 function getAccessToken() {
 
-    return localStorage.getItem(
-        "access_token"
-    );
+    return localStorage.getItem("access_token");
 
 }
 
@@ -234,11 +225,42 @@ function getAccessToken() {
 function authHeaders() {
 
     return {
-
-        "Authorization":
-            `JWT ${getAccessToken()}`
-
+        "Authorization": `JWT ${getAccessToken()}`
     };
+
+}
+
+
+/* =====================================================
+   PRODUCT IMAGE URL
+   Uses images from SimpleProductSerializer
+   ===================================================== */
+
+function getProductImage(product) {
+
+    if (
+        !product.images ||
+        product.images.length === 0 ||
+        !product.images[0].image
+    ) {
+        return "";
+    }
+
+    const image = product.images[0].image;
+
+    // Absolute URL, for example a Cloudinary image URL.
+    if (
+        image.startsWith("http://") ||
+        image.startsWith("https://")
+    ) {
+        return image;
+    }
+
+    // Relative URL, for example /media/store/images/mug_set.jpg.
+    return new URL(
+        image,
+        window.location.origin
+    ).href;
 
 }
 
@@ -270,138 +292,225 @@ async function loadCart() {
     }
 
 
-    const response =
-        await fetch(
+    try {
+
+        const response = await fetch(
             `/api/store/carts/${cartId}/`,
             {
-                headers:
-                    authHeaders()
+                headers: authHeaders()
             }
         );
 
 
-    if (!response.ok) {
+        if (!response.ok) {
 
-        localStorage.removeItem(
-            "cart_id"
-        );
+            localStorage.removeItem("cart_id");
 
-        cartId = null;
+            cartId = null;
 
-        showEmptyCart();
+            showEmptyCart();
 
-        return;
-
-    }
-
-
-    const data =
-        await response.json();
-
-
-    const tbody =
-        document.getElementById(
-            "cart-items"
-        );
-
-
-    tbody.innerHTML = "";
-
-
-    if (
-        !data.items ||
-        data.items.length === 0
-    ) {
-
-        showEmptyCart();
-
-        return;
-
-    }
-
-
-    let total = 0;
-
-
-    data.items.forEach(
-        function(item) {
-
-            total +=
-                Number(
-                    item.total_price
-                );
-
-
-            tbody.innerHTML += `
-
-                <tr>
-
-                    <td>
-                        ${item.product.title}
-                    </td>
-
-
-                    <td>
-
-                        <input
-                            type="number"
-                            min="1"
-                            value="${item.quantity}"
-                            class="form-control"
-                            onchange="
-                                updateQuantity(
-                                    ${item.id},
-                                    this.value
-                                )
-                            "
-                        >
-
-                    </td>
-
-
-                    <td>
-
-                        $${Number(
-                            item.total_price
-                        ).toFixed(2)}
-
-                    </td>
-
-
-                    <td>
-
-                        <button
-                            class="btn remove-btn btn-sm"
-                            onclick="
-                                removeItem(
-                                    ${item.id}
-                                )
-                            "
-                        >
-
-                            Remove
-
-                        </button>
-
-                    </td>
-
-                </tr>
-
-            `;
+            return;
 
         }
-    );
 
 
-    document.getElementById(
-        "total"
-    ).textContent =
-        total.toFixed(2);
+        const data = await response.json();
+
+        const tbody = document.getElementById("cart-items");
+
+        tbody.innerHTML = "";
 
 
-    document.getElementById(
-        "checkout-btn"
-    ).disabled = false;
+        if (
+            !data.items ||
+            data.items.length === 0
+        ) {
+
+            showEmptyCart();
+
+            return;
+
+        }
+
+
+        document.getElementById(
+            "empty-message"
+        ).innerHTML = "";
+
+
+        let total = 0;
+
+
+        data.items.forEach(function(item) {
+
+            total += Number(item.total_price);
+
+            const product = item.product;
+
+            const imageUrl = getProductImage(product);
+
+
+            // Create the product row.
+
+            const row = document.createElement("tr");
+
+
+            // PRODUCT CELL
+
+            const productCell = document.createElement("td");
+
+            const details = document.createElement("div");
+
+            details.className = "product-details";
+
+
+            // Display the product image if available.
+
+            if (imageUrl) {
+
+                const image = document.createElement("img");
+
+                image.src = imageUrl;
+
+                image.alt = product.title || "Product image";
+
+                image.className = "cart-product-image";
+
+                image.loading = "lazy";
+
+
+                // Hide a broken image if the file is unavailable.
+
+                image.onerror = function() {
+
+                    this.style.display = "none";
+
+                };
+
+
+                details.appendChild(image);
+
+            }
+
+
+            // PRODUCT TITLE
+
+            const title = document.createElement("span");
+
+            title.className = "product-title";
+
+            title.textContent = product.title;
+
+
+            details.appendChild(title);
+
+            productCell.appendChild(details);
+
+
+            // QUANTITY CELL
+
+            const quantityCell = document.createElement("td");
+
+            const quantityInput = document.createElement("input");
+
+            quantityInput.type = "number";
+
+            quantityInput.min = "1";
+
+            quantityInput.step = "1";
+
+            quantityInput.value = item.quantity;
+
+            quantityInput.className = "form-control quantity-input";
+
+            quantityInput.setAttribute(
+                "aria-label",
+                `Quantity for ${product.title}`
+            );
+
+
+            quantityInput.addEventListener("change", function() {
+
+                updateQuantity(item.id, this.value);
+
+            });
+
+
+            quantityCell.appendChild(quantityInput);
+
+
+            // PRICE CELL
+
+            const priceCell = document.createElement("td");
+
+            priceCell.textContent =
+                "$" + Number(item.total_price).toFixed(2);
+
+
+            // ACTION CELL
+
+            const actionCell = document.createElement("td");
+
+            const removeButton = document.createElement("button");
+
+            removeButton.className = "btn remove-btn btn-sm";
+
+            removeButton.textContent = "Remove";
+
+
+            removeButton.addEventListener("click", function() {
+
+                removeItem(item.id);
+
+            });
+
+
+            actionCell.appendChild(removeButton);
+
+
+            // ADD CELLS TO ROW
+
+            row.appendChild(productCell);
+
+            row.appendChild(quantityCell);
+
+            row.appendChild(priceCell);
+
+            row.appendChild(actionCell);
+
+
+            tbody.appendChild(row);
+
+        });
+
+
+        // UPDATE TOTAL
+
+        document.getElementById("total").textContent =
+            total.toFixed(2);
+
+
+        // ENABLE CHECKOUT
+
+        document.getElementById("checkout-btn").disabled = false;
+
+
+    } catch (error) {
+
+        console.error("Error loading cart:", error);
+
+        document.getElementById("cart-items").innerHTML = `
+
+            <tr>
+                <td colspan="4" class="text-center text-danger py-4">
+                    Unable to load your cart. Please refresh the page.
+                </td>
+            </tr>
+
+        `;
+
+    }
 
 }
 
@@ -423,9 +532,7 @@ function showEmptyCart() {
 
         <div class="empty-box">
 
-            <h4>
-                Your cart is empty
-            </h4>
+            <h4>Your cart is empty</h4>
 
             <p>
                 Add some products to continue shopping.
@@ -438,8 +545,7 @@ function showEmptyCart() {
 
     document.getElementById(
         "total"
-    ).textContent =
-        "0.00";
+    ).textContent = "0.00";
 
 
     document.getElementById(
@@ -453,19 +559,15 @@ function showEmptyCart() {
    UPDATE QUANTITY
    ===================================================== */
 
-async function updateQuantity(
-    itemId,
-    quantity
-) {
+async function updateQuantity(itemId, quantity) {
 
     if (
         !quantity ||
+        !Number.isInteger(Number(quantity)) ||
         Number(quantity) < 1
     ) {
 
-        alert(
-            "Quantity must be at least 1."
-        );
+        alert("Quantity must be a whole number of at least 1.");
 
         loadCart();
 
@@ -474,26 +576,24 @@ async function updateQuantity(
     }
 
 
-    const response =
-        await fetch(
+    try {
+
+        const response = await fetch(
             `/api/store/carts/${cartId}/cart-items/${itemId}/`,
             {
                 method: "PATCH",
 
                 headers: {
 
-                    "Content-Type":
-                        "application/json",
+                    "Content-Type": "application/json",
 
-                    "Authorization":
-                        `JWT ${getAccessToken()}`
+                    "Authorization": `JWT ${getAccessToken()}`
 
                 },
 
                 body: JSON.stringify({
 
-                    quantity:
-                        Number(quantity)
+                    quantity: Number(quantity)
 
                 })
 
@@ -501,18 +601,29 @@ async function updateQuantity(
         );
 
 
-    if (!response.ok) {
+        if (!response.ok) {
 
-        alert(
-            "Unable to update quantity."
-        );
+            alert("Unable to update quantity.");
 
-        return;
+            loadCart();
+
+            return;
+
+        }
+
+
+        await loadCart();
+
+
+    } catch (error) {
+
+        console.error("Error updating quantity:", error);
+
+        alert("An error occurred while updating the quantity.");
+
+        loadCart();
 
     }
-
-
-    loadCart();
 
 }
 
@@ -521,35 +632,40 @@ async function updateQuantity(
    REMOVE ITEM
    ===================================================== */
 
-async function removeItem(
-    itemId
-) {
+async function removeItem(itemId) {
 
-    const response =
-        await fetch(
+    try {
+
+        const response = await fetch(
             `/api/store/carts/${cartId}/cart-items/${itemId}/`,
             {
                 method: "DELETE",
 
-                headers:
-                    authHeaders()
+                headers: authHeaders()
 
             }
         );
 
 
-    if (!response.ok) {
+        if (!response.ok) {
 
-        alert(
-            "Unable to remove item."
-        );
+            alert("Unable to remove item.");
 
-        return;
+            return;
+
+        }
+
+
+        await loadCart();
+
+
+    } catch (error) {
+
+        console.error("Error removing item:", error);
+
+        alert("An error occurred while removing the item.");
 
     }
-
-
-    loadCart();
 
 }
 
@@ -575,3 +691,4 @@ loadCart();
 </script>
 
 {% endblock %}
+```
